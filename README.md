@@ -160,7 +160,6 @@ pong-neon/
 │   └── multiplayer/
 │       └── PongGame.java          # Main game source (all-in-one file)
 ├── docs/                           # Documentation & landing page
-│   ├── index.html                  # Landing page
 │   └── screenshot.png              # Game screenshot
 ├── dist/                           # Compiled JARs (future)
 ├── src/                            # Future source split
