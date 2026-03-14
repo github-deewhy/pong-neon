@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # Neon Pong - Cyberpunk Edition
+=======
+# Neon Pong - Cyberpunk Edition v2.3 (Beta 2)
+>>>>>>> 853ef6f (Update README with complete documentation)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Java Version](https://img.shields.io/badge/Java-11%2B-blue)](https://www.oracle.com/java/technologies/javase-downloads.html)
@@ -46,7 +50,7 @@ Visit [neonpong.deewhy.ovh](https://neonpong.deewhy.ovh) for the latest release.
 
 ## 🌐 Multiplayer Setup
 
-The game uses a PocketBase backend at `https://POCKETBASE.DEEWHY.OVH`. To use your own backend:
+The game uses a PocketBase backend, to use your own backend:
 
 1. Set up PocketBase locally or on your server
 2. Create collections: `pong` (users) and `games` (game sessions)
