@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Java Version](https://img.shields.io/badge/Java-11%2B-blue)](https://www.oracle.com/java/technologies/javase-downloads.html)
 [![Version](https://img.shields.io/badge/version-2.2β1-purple)](https://github.com/github-deewhy/pong-neon)
-[![Landing Page](https://img.shields.io/badge/web-neonpong.deewhy.ovh-ff69b4)](https://neonpong.deewhy.ovh)
+[![Landing Page](https://img.shields.io/badge/web-neonpong.deewhy.ovh-ff69b4)](https://deewhy.ovh/neonpong)
 
 <div align="center">
   <img src="docs/screenshot.png" alt="Neon Pong Screenshot" width="600"/>
@@ -186,7 +186,7 @@ pong-neon/
 
 ## 🧪 Beta Testing Notes
 
-Current version: **2.3 Beta 2**
+Current version: **2.3 Beta 3**
 
 ### Known Issues
 - HTTP polling may introduce ~100ms latency
@@ -198,7 +198,7 @@ Please report issues via GitHub Issues
 
 ## 📝 Changelog
 
-### v2.3 Beta 2 (March 13, 2026)
+### v2.3 Beta 3 (March 14, 2026)
 - **Online Multiplayer** — Full account system with PocketBase backend
 - **4 Persistent Rooms** — ROOKIE, VETERAN, ELITE, LEGEND (always available)
 - **Account Management** — Register, login, change email/password, delete account
