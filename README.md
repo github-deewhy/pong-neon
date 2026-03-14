@@ -1,4 +1,4 @@
-# Neon Pong - Cyberpunk Edition v2.2 (Beta 1)
+# Neon Pong - Cyberpunk Edition
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Java Version](https://img.shields.io/badge/Java-11%2B-blue)](https://www.oracle.com/java/technologies/javase-downloads.html)
@@ -189,7 +189,7 @@ pong-neon/
 
 ## 🧪 Beta Testing Notes
 
-Current version: **2.2 Beta 1**
+Current version: **2.3 Beta 2**
 
 ### Known Issues
 - HTTP polling may introduce ~100ms latency
@@ -201,7 +201,7 @@ Please report issues via GitHub Issues
 
 ## 📝 Changelog
 
-### v2.2 Beta 1 (March 13, 2026)
+### v2.3 Beta 2 (March 13, 2026)
 - **Online Multiplayer** — Full account system with PocketBase backend
 - **4 Persistent Rooms** — ROOKIE, VETERAN, ELITE, LEGEND (always available)
 - **Account Management** — Register, login, change email/password, delete account
