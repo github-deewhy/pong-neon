@@ -176,7 +176,7 @@ pong-neon/
 
 ### Multiplayer connection fails
 - Check your internet connection
-- Verify that `https://POCKETBASE.DEEWHY.OVH` is accessible
+- Verify that your POCKETBASE instance is accessible
 - Firewall might be blocking Java's network access
 
 ### No sound
