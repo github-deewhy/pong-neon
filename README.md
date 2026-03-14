@@ -90,7 +90,7 @@ java -jar NeonPong.jar
 
 Create a folder structure:
 ```
-NeonPong_v2.2/
+pong-neon/
 ├── run.sh              # Launch script (macOS/Linux)
 ├── run.bat             # Launch script (Windows)
 ├── NeonPong.jar        # Executable JAR
