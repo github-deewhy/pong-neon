@@ -7,7 +7,7 @@ CREDITS:
 Development: DeeWHY
 Sound Engine: Custom Java implementation
 Visual Effects: Java 2D Graphics
-Version: 2.3 beta2
+Version: 2.3 beta3
 */
 import javax.swing.*;
 import javax.swing.Timer;
@@ -788,7 +788,7 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
         g.setPaint(bg);
         g.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
         int centerX = GAME_WIDTH / 2;
-        int panelW = 500; int panelH = 460;
+        int panelW = 500; int panelH = 520;
         int panelX = centerX - panelW/2;
         int panelY = (GAME_HEIGHT - panelH)/2 - 20;
         for (int i = 6; i > 0; i--) {
@@ -816,11 +816,11 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
         g.drawLine(panelX + 30, panelY + 90, panelX + panelW - 30, panelY + 90);
         mpCursorBlink += 0.016f;
         int fieldX = panelX + 40; int fieldW = panelW - 80; int fieldH = 48;
-        drawInputBox(g, fieldX, panelY + 110, fieldW, fieldH, "EMAIL ADDRESS", mpEmail, mpAccountField == 0, false);
-        drawInputBox(g, fieldX, panelY + 205, fieldW, fieldH, "PASSWORD (min 8 chars)", mpPassword, mpAccountField == 1, true);
-        drawInputBox(g, fieldX, panelY + 300, fieldW, fieldH, "CONFIRM PASSWORD", mpConfirmPassword, mpAccountField == 2, true);
+        drawInputBox(g, fieldX, panelY + 108, fieldW, fieldH, "EMAIL ADDRESS",    mpEmail,           mpAccountField == 0, false);
+        drawInputBox(g, fieldX, panelY + 200, fieldW, fieldH, "PASSWORD (min 8 chars)", mpPassword,  mpAccountField == 1, true);
+        drawInputBox(g, fieldX, panelY + 292, fieldW, fieldH, "CONFIRM PASSWORD", mpConfirmPassword, mpAccountField == 2, true);
         int arrowX = panelX + 18;
-        int[] arrowYs = {panelY + 110 + fieldH/2, panelY + 205 + fieldH/2, panelY + 300 + fieldH/2};
+        int[] arrowYs = {panelY + 108 + fieldH/2, panelY + 200 + fieldH/2, panelY + 292 + fieldH/2};
         g.setColor(new Color(255, 160, 50));
         int ay = arrowYs[mpAccountField];
         g.fillPolygon(new int[]{arrowX, arrowX+10, arrowX}, new int[]{ay-6, ay, ay+6}, 3);
@@ -829,15 +829,16 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
             fm = g.getFontMetrics();
             boolean isOk = mpLoginError.startsWith("Account created");
             g.setColor(isOk ? ACCENT_GREEN : ACCENT_RED);
-            g.drawString(mpLoginError, centerX - fm.stringWidth(mpLoginError)/2, panelY + 378);
+            g.drawString(mpLoginError, centerX - fm.stringWidth(mpLoginError)/2, panelY + 380);
         }
         if (mpManager.isLoading()) {
             g.setFont(new Font("Segoe UI", Font.BOLD, 14)); fm = g.getFontMetrics();
             g.setColor(ACCENT_YELLOW);
-            g.drawString("Creating account...", centerX - fm.stringWidth("Creating account...")/2, panelY + 378);
+            g.drawString("Creating account...", centerX - fm.stringWidth("Creating account...")/2, panelY + 380);
         }
+        // Button
         int btnW = 220; int btnH = 44;
-        int btnX = centerX - btnW/2; int btnY = panelY + 395;
+        int btnX = centerX - btnW/2; int btnY = panelY + 400;
         boolean canReg = !mpEmail.isEmpty() && !mpPassword.isEmpty() && !mpConfirmPassword.isEmpty() && !mpManager.isLoading();
         if (canReg) { for (int i = 3; i > 0; i--) { g.setColor(new Color(255, 140, 0, i*20)); g.fillRoundRect(btnX-i*2, btnY-i*2, btnW+i*4, btnH+i*4, 14, 14); } }
         GradientPaint btnGrad = new GradientPaint(btnX, btnY, canReg ? new Color(200, 100, 0) : new Color(40, 25, 5), btnX, btnY+btnH, canReg ? new Color(140, 60, 0) : new Color(25, 15, 2));
@@ -847,13 +848,13 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
         g.setStroke(new BasicStroke(2));
         g.drawRoundRect(btnX, btnY, btnW, btnH, 12, 12);
         g.setFont(new Font("Segoe UI", Font.BOLD, 16)); fm = g.getFontMetrics();
-        String btnLabel = "CREATE ACCOUNT  →";
         g.setColor(canReg ? Color.WHITE : new Color(80, 60, 30));
-        g.drawString(btnLabel, centerX - fm.stringWidth(btnLabel)/2, btnY + btnH/2 + 6);
+        g.drawString("CREATE ACCOUNT  →", centerX - fm.stringWidth("CREATE ACCOUNT  →")/2, btnY + btnH/2 + 6);
+        // Hint — well below button
         g.setFont(new Font("Segoe UI", Font.PLAIN, 12)); fm = g.getFontMetrics();
         String hint2 = "TAB/↓  next field    ENTER  register    ESC  back to login";
         g.setColor(new Color(90, 70, 40));
-        g.drawString(hint2, centerX - fm.stringWidth(hint2)/2, panelY + panelH - 18);
+        g.drawString(hint2, centerX - fm.stringWidth(hint2)/2, panelY + panelH - 16);
     }
 
     private void drawMultiplayerAccount(Graphics2D g) {
@@ -1583,31 +1584,26 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
         g.setColor(PAUSE_COLOR);
         g.drawString("PAUSED", centerX - fm.stringWidth("PAUSED") / 2, 330);
 
-        int boxWidth = 350;
-        int boxHeight = 140;
+        // Measure both lines to size the box dynamically
+        String resumeLine = "ENTER  ·  Resume";
+        String escLine = mpManager.isMultiplayerActive() ? "ESC  ·  Forfeit & Return to Lobby" : "ESC  ·  Main Menu";
+        g.setFont(new Font("Segoe UI", Font.PLAIN, 18)); fm = g.getFontMetrics();
+        int boxWidth = Math.max(fm.stringWidth(resumeLine), fm.stringWidth(escLine)) + 60;
+        int boxHeight = 110;
         int boxX = centerX - boxWidth / 2;
         int boxY = 370;
 
-        GradientPaint boxGrad = new GradientPaint(
-            boxX, boxY, new Color(40, 40, 70),
-            boxX + boxWidth, boxY + boxHeight, new Color(30, 30, 60)
-        );
+        GradientPaint boxGrad = new GradientPaint(boxX, boxY, new Color(40, 40, 70), boxX + boxWidth, boxY + boxHeight, new Color(30, 30, 60));
         g.setPaint(boxGrad);
         g.fillRoundRect(boxX, boxY, boxWidth, boxHeight, 15, 15);
-        
-        g.setColor(new Color(100, 100, 150));
-        g.setStroke(new BasicStroke(2));
+        g.setColor(new Color(100, 100, 150)); g.setStroke(new BasicStroke(2));
         g.drawRoundRect(boxX, boxY, boxWidth, boxHeight, 15, 15);
 
-        g.setFont(new Font("Segoe UI", Font.PLAIN, 20));
-        fm = g.getFontMetrics();
-        
+        g.setFont(new Font("Segoe UI", Font.BOLD, 18)); fm = g.getFontMetrics();
         g.setColor(ACCENT_GREEN);
-        g.drawString("Press ENTER to Resume", centerX - fm.stringWidth("Press ENTER to Resume") / 2, boxY + 50);
-        
+        g.drawString(resumeLine, centerX - fm.stringWidth(resumeLine) / 2, boxY + 42);
         g.setColor(TEXT_SECONDARY);
-        String enterLabel = mpManager.isMultiplayerActive() ? "Press ESC to Forfeit & Return to Lobby" : "Press ESC for Main Menu";
-        g.drawString(enterLabel, centerX - fm.stringWidth(enterLabel) / 2, boxY + 90);
+        g.drawString(escLine, centerX - fm.stringWidth(escLine) / 2, boxY + 76);
     }
 
     private void drawGameOver(Graphics2D g) {
@@ -1805,119 +1801,87 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
 
     private void update() {
         boolean isMP = mpManager.isMultiplayerActive();
-        // In MP: host=player1=LEFT paddle, client=player2=RIGHT paddle
-        // player/cpu objects are always LEFT/RIGHT physically, but in MP the client
-        // controls cpu (right) and sees host position in player (left).
         boolean clientSide = isMP && !mpManager.isHost();
 
+        // Paddle movement
         if (clientSide) {
-            // Client moves the RIGHT paddle (cpu object)
-            if (up) { cpu.y -= PLAYER_SPEED; cpu.y = Math.max(20, Math.min(GAME_HEIGHT - PADDLE_HEIGHT - 20, cpu.y)); }
+            if (up)   { cpu.y -= PLAYER_SPEED; cpu.y = Math.max(20, Math.min(GAME_HEIGHT - PADDLE_HEIGHT - 20, cpu.y)); }
             if (down) { cpu.y += PLAYER_SPEED; cpu.y = Math.max(20, Math.min(GAME_HEIGHT - PADDLE_HEIGHT - 20, cpu.y)); }
-            // Remote (host) position goes into player (left)
             player.y = mpManager.getRemotePaddleY();
         } else {
-            // Single player or host: control LEFT paddle
-            if (up) { player.y -= PLAYER_SPEED; player.y = Math.max(20, Math.min(GAME_HEIGHT - PADDLE_HEIGHT - 20, player.y)); }
+            if (up)   { player.y -= PLAYER_SPEED; player.y = Math.max(20, Math.min(GAME_HEIGHT - PADDLE_HEIGHT - 20, player.y)); }
             if (down) { player.y += PLAYER_SPEED; player.y = Math.max(20, Math.min(GAME_HEIGHT - PADDLE_HEIGHT - 20, player.y)); }
-            if (!isMP) {
-                cpu.updateAI(ball, rand, selectedDifficulty);
-            } else {
-                // Host: remote (client) position goes into cpu (right)
-                cpu.y = mpManager.getRemotePaddleY();
-            }
+            if (!isMP) cpu.updateAI(ball, rand, selectedDifficulty);
+            else       cpu.y = mpManager.getRemotePaddleY();
         }
 
-        // FIXED: Ball always moves in single-player, host controls in multiplayer
-        if (!isMP || mpManager.isHost()) {
-            ball.move();
-        }
-
+        // Ball movement — runs on all sides (single player and both MP sides)
+        ball.move();
         int currentSpeed = (int) Math.hypot(ball.dx, ball.dy);
-        if (currentSpeed > score.maxBallSpeed) {
-            score.maxBallSpeed = currentSpeed;
-        }
+        if (currentSpeed > score.maxBallSpeed) score.maxBallSpeed = currentSpeed;
 
+        // Wall bounces
         if (ball.y <= 20) {
-            ball.y = 20;
-            ball.dy = -ball.dy;
-            createParticles(ball.x + BALL_SIZE / 2, ball.y, 8, BALL_GLOW);
+            ball.y = 20; ball.dy = -ball.dy;
+            createParticles(ball.x + BALL_SIZE/2, ball.y, 8, BALL_GLOW);
             if (soundEnabled) soundManager.playWallHit(currentSpeed);
         }
         if (ball.y + BALL_SIZE >= GAME_HEIGHT - 20) {
-            ball.y = GAME_HEIGHT - BALL_SIZE - 20;
-            ball.dy = -ball.dy;
-            createParticles(ball.x + BALL_SIZE / 2, ball.y + BALL_SIZE, 8, BALL_GLOW); 
+            ball.y = GAME_HEIGHT - BALL_SIZE - 20; ball.dy = -ball.dy;
+            createParticles(ball.x + BALL_SIZE/2, ball.y + BALL_SIZE, 8, BALL_GLOW);
             if (soundEnabled) soundManager.playWallHit(currentSpeed);
         }
 
+        // Left paddle collision — always local (each side has their real paddle)
         if (ball.intersects(player)) {
             ball.x = player.x + PADDLE_WIDTH;
             ball.dx = Math.abs(ball.dx);
-            int hitPos = (ball.y + BALL_SIZE / 2) - (player.y + PADDLE_HEIGHT / 2);
+            int hitPos = (ball.y + BALL_SIZE/2) - (player.y + PADDLE_HEIGHT/2);
             ball.dy = hitPos / 4;
             ball.accelerate(selectedDifficulty.ballAccel);
-            player.flash();
-            score.currentRally++;
-            score.playerHits++;
+            player.flash(); score.currentRally++; score.playerHits++;
             screenShake = 5;
-            createParticles(ball.x, ball.y + BALL_SIZE / 2, 15, PLAYER_GRADIENT_START);
+            createParticles(ball.x, ball.y + BALL_SIZE/2, 15, PLAYER_GRADIENT_START);
             if (soundEnabled) soundManager.playPaddleHit(currentSpeed, true);
         }
 
+        // Right paddle collision — always local
         if (ball.intersects(cpu)) {
             ball.x = cpu.x - BALL_SIZE;
             ball.dx = -Math.abs(ball.dx);
-            int hitPos = (ball.y + BALL_SIZE / 2) - (cpu.y + PADDLE_HEIGHT / 2);
+            int hitPos = (ball.y + BALL_SIZE/2) - (cpu.y + PADDLE_HEIGHT/2);
             ball.dy = hitPos / 4;
             ball.accelerate(selectedDifficulty.ballAccel);
-            cpu.flash();
-            score.currentRally++;
-            score.cpuHits++;
+            cpu.flash(); score.currentRally++; score.cpuHits++;
             screenShake = 5;
-            createParticles(ball.x + BALL_SIZE, ball.y + BALL_SIZE / 2, 15, CPU_GRADIENT_START);
+            createParticles(ball.x + BALL_SIZE, ball.y + BALL_SIZE/2, 15, CPU_GRADIENT_START);
             if (soundEnabled) soundManager.playPaddleHit(currentSpeed, false);
         }
 
-        // Only host (or single-player) scores — client gets scores from DB via pollServer
+        // Scoring — host only in MP (client ball is cosmetic, host is the authority)
         if (!isMP || mpManager.isHost()) {
             if (!scoreCooldown && ball.x < 10) {
-                scoreCooldown = true;
-                score.p2++;
-                score.endRally();
-                screenShake = 10;
+                scoreCooldown = true; score.p2++; score.endRally(); screenShake = 10;
                 if (soundEnabled) soundManager.playScore(false);
-                if (score.p2 >= WIN_SCORE) {
-                    state = State.GAMEOVER;
-                    if (soundEnabled) soundManager.playGameOver(false);
-                    if (isMP) mpManager.endGame(false);
-                } else {
-                    resetRound(false);
-                }
+                if (score.p2 >= WIN_SCORE) { state = State.GAMEOVER; if (soundEnabled) soundManager.playGameOver(false); if (isMP) mpManager.endGame(false); }
+                else resetRound(false);
             }
             if (!scoreCooldown && ball.x > GAME_WIDTH - BALL_SIZE - 10) {
-                scoreCooldown = true;
-                score.p1++;
-                score.endRally();
-                screenShake = 10;
+                scoreCooldown = true; score.p1++; score.endRally(); screenShake = 10;
                 if (soundEnabled) soundManager.playScore(true);
-                if (score.p1 >= WIN_SCORE) {
-                    state = State.GAMEOVER;
-                    if (soundEnabled) soundManager.playGameOver(true);
-                    if (isMP) mpManager.endGame(true);
-                } else {
-                    resetRound(true);
-                }
+                if (score.p1 >= WIN_SCORE) { state = State.GAMEOVER; if (soundEnabled) soundManager.playGameOver(true); if (isMP) mpManager.endGame(true); }
+                else resetRound(true);
             }
         }
-        
+
+        // MP sync
         if (isMP) {
             if (mpManager.isHost()) {
-                mpManager.sendState(this);         // host pushes game state
-                mpManager.sendPaddleMove(player.y); // host sends left paddle
+                mpManager.sendState(this);
+                mpManager.sendPaddleMove(player.y);
             } else {
-                mpManager.syncGame(this);           // client pulls ball from server
-                mpManager.sendPaddleMove(cpu.y);    // client sends right paddle
+                mpManager.syncGame(this);       // client corrects ball from host (smooth, no freeze)
+                mpManager.sendPaddleMove(cpu.y);
             }
         }
     }
@@ -2706,8 +2670,11 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
         private static final String BASE_URL = "https://POCKETBASE.DEEWHY.OVH";
         private static final HttpClient HTTP = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
+            .version(HttpClient.Version.HTTP_1_1)  // avoid HTTP/2 concurrent stream limits
             .build();
-        private static final ScheduledExecutorService SCHEDULER = Executors.newSingleThreadScheduledExecutor();
+        private static final java.util.concurrent.Semaphore REQ_LIMIT = new java.util.concurrent.Semaphore(4); // max 4 concurrent requests
+        private static final ScheduledExecutorService SCHEDULER = Executors.newScheduledThreadPool(2);
+        private java.util.concurrent.ScheduledFuture<?> pollFuture = null;
 
         private PongGame game;
         private String token = "";
@@ -2719,7 +2686,12 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
         private boolean loading = false;
         private long lastSync = 0;
         private long lastPaddleSend = 0;
+        private long joinedAt = 0;
+        private long lastClientHit = 0;
+        private volatile boolean clientHitPending = false;
+        long rightZoneEnteredAt = 0; // when host ball entered right-side freeze zone
         private int remotePaddleY = (GAME_HEIGHT - PADDLE_HEIGHT) / 2;
+        private float remotePaddleSmooth = (GAME_HEIGHT - PADDLE_HEIGHT) / 2f; // interpolated
 
         private float rBallX, rBallY, rBallDX, rBallDY;
         private int rScore1, rScore2;
@@ -2734,18 +2706,25 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
         public boolean isHost() { return isHost; }
         public void resetRoom() {
             // Keep token + userId (still logged in), just clear the game session
+            if (pollFuture != null) { pollFuture.cancel(false); pollFuture = null; }
             active = false;
             gameId = "";
             isHost = false;
             isCustomRoom = false;
             waitingForPlayer2 = false;
+            joinedAt = 0;
+            lastClientHit = 0;
+            clientHitPending = false;
+            rightZoneEnteredAt = 0;
             remotePaddleY = (GAME_HEIGHT - PADDLE_HEIGHT) / 2;
+            remotePaddleSmooth = (GAME_HEIGHT - PADDLE_HEIGHT) / 2f;
             rBallX = rBallY = rBallDX = rBallDY = 0;
         }
 
         /** Called when host exits MP_WAITING before any opponent joined.
          *  Deletes custom rooms or clears the slot on persistent rooms. */
         public void cancelWaiting() {
+            if (pollFuture != null) { pollFuture.cancel(false); pollFuture = null; }
             if (!gameId.isEmpty() && !token.isEmpty()) {
                 final String gId = gameId; final String tok = token; final boolean custom = isCustomRoom;
                 new Thread(() -> {
@@ -2760,13 +2739,15 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
                         } else {
                             // Persistent room: just clear our slot
                             patch(gId, "{\"player1Id\":\"\",\"player2Id\":\"\",\"status\":\"waiting\""
-                                + ",\"player1Score\":0,\"player2Score\":0,\"winner\":\"\"}");
+                                + ",\"player1Score\":0,\"player2Score\":0,\"winner\":\"\""
+                                + ",\"ballX\":400,\"ballY\":350,\"ballDX\":8,\"ballDY\":0,\"p1PaddleY\":290,\"p2PaddleY\":290}");
                         }
                     } catch (Exception e) { System.err.println("cancelWaiting: " + e); }
                 }).start();
             }
             active = false; gameId = ""; isHost = false; isCustomRoom = false; waitingForPlayer2 = false;
             remotePaddleY = (GAME_HEIGHT - PADDLE_HEIGHT) / 2;
+            remotePaddleSmooth = (GAME_HEIGHT - PADDLE_HEIGHT) / 2f;
             rBallX = rBallY = rBallDX = rBallDY = 0;
         }
 
@@ -2788,13 +2769,47 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
                     java.util.List<String[]> persistent = new java.util.ArrayList<>();
                     for (String[] pr : PongGame.PERSISTENT_ROOMS) {
                         String pName = pr[0];
+                        // Fetch ALL records for this room name to detect and clean duplicates
                         var req = HttpRequest.newBuilder()
-                            .uri(URI.create(BASE_URL + "/api/collections/games/records?filter=(roomId%3D'" + pName + "')&perPage=1"))
+                            .uri(URI.create(BASE_URL + "/api/collections/games/records?filter=(roomId%3D'" + pName + "')&sort=-updated&perPage=10"))
                             .header("Authorization", token).build();
                         var res = HTTP.send(req, HttpResponse.BodyHandlers.ofString()).body();
                         String arrKey = "\"items\":[";
                         int ai = res.indexOf(arrKey);
-                        String item = (ai >= 0) ? firstArrayItem(res.substring(ai + arrKey.length())) : null;
+                        // Parse all items
+                        java.util.List<String> allIds = new java.util.ArrayList<>();
+                        String item = null;
+                        if (ai >= 0) {
+                            int pos = ai + arrKey.length();
+                            while (pos < res.length()) {
+                                while (pos < res.length() && res.charAt(pos) != '{' && res.charAt(pos) != ']') pos++;
+                                if (pos >= res.length() || res.charAt(pos) == ']') break;
+                                int depth2 = 0, rs2 = pos;
+                                while (pos < res.length()) {
+                                    char ch = res.charAt(pos);
+                                    if (ch == '"') { pos++; while (pos < res.length() && res.charAt(pos) != '"') { if (res.charAt(pos) == '\\') pos++; pos++; } }
+                                    else if (ch == '{') depth2++;
+                                    else if (ch == '}') { depth2--; if (depth2 == 0) { pos++; break; } }
+                                    pos++;
+                                }
+                                String rec = res.substring(rs2, pos);
+                                String rid2 = JsonUtil.get(rec, "id");
+                                if (rid2 != null) {
+                                    if (item == null) item = rec; // newest (sort=-updated)
+                                    else allIds.add(rid2); // duplicates to delete
+                                }
+                            }
+                        }
+                        // Delete duplicate records
+                        for (String dupId : allIds) {
+                            try {
+                                var delReq = HttpRequest.newBuilder()
+                                    .uri(URI.create(BASE_URL + "/api/collections/games/records/" + dupId))
+                                    .header("Authorization", token)
+                                    .method("DELETE", HttpRequest.BodyPublishers.noBody()).build();
+                                HTTP.send(delReq, HttpResponse.BodyHandlers.ofString());
+                            } catch (Exception ignore) {}
+                        }
                         if (item != null && item.contains("\"id\"")) {
                             String gid = JsonUtil.get(item, "id");
                             String p1  = JsonUtil.get(item, "player1Id");
@@ -2803,10 +2818,16 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
                             boolean p1ok = (p1 != null && p1.length() >= 10 && !"null".equals(p1));
                             boolean p2ok = (p2 != null && p2.length() >= 10 && !"null".equals(p2));
                             boolean isSelf = userId != null && userId.equals(p1);
-                            String disp = "finished".equals(st) ? "waiting"
-                                        : (p1ok && p2ok)        ? "playing"
-                                        : (p1ok && !isSelf)     ? "occupied"  // someone else waiting
-                                        :                         "waiting";  // empty or we own slot 1
+                            // Reset finished rooms in DB so they're actually joinable
+                            if ("finished".equals(st) && gid != null) {
+                                patch(gid, "{\"player1Id\":\"\",\"player2Id\":\"\",\"status\":\"waiting\""
+                                    + ",\"player1Score\":0,\"player2Score\":0,\"winner\":\"\""
+                                    + ",\"ballX\":400,\"ballY\":350,\"ballDX\":8,\"ballDY\":0,\"p1PaddleY\":290,\"p2PaddleY\":290}");
+                                p1ok = false; p2ok = false;
+                            }
+                            String disp = (p1ok && p2ok)    ? "playing"
+                                        : (p1ok && !isSelf) ? "occupied"
+                                        :                     "waiting";
                             if (gid != null) persistent.add(new String[]{pName, gid, disp});
                         } else {
                             // Create persistent room for the first time
@@ -3110,13 +3131,14 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
                         gameId = JsonUtil.get(res, "id");
                         isHost = true; isCustomRoom = true;
                         final String displayId = genId;
-                        active = true; waitingForPlayer2 = true;
+                        active = true; waitingForPlayer2 = true; joinedAt = System.currentTimeMillis();
                         SwingUtilities.invokeLater(() -> {
                             loading = false;
                             game.mpCurrentRoomId = displayId;
                             game.state = State.MP_WAITING;
                         });
-                        SCHEDULER.scheduleAtFixedRate(this::pollServer, 0, 100, TimeUnit.MILLISECONDS);
+                        if (pollFuture != null) pollFuture.cancel(false);
+                        pollFuture = SCHEDULER.scheduleAtFixedRate(this::pollServer, 0, 33, TimeUnit.MILLISECONDS);
                         return;
                     }
 
@@ -3138,8 +3160,16 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
                         String existingId = JsonUtil.get(item, "id");
                         String p1 = JsonUtil.get(item, "player1Id");
                         String p2 = JsonUtil.get(item, "player2Id");
+                        String st = JsonUtil.get(item, "status");
                         boolean p1Empty = (p1 == null || p1.length() < 10 || "null".equals(p1));
                         boolean p2Empty = (p2 == null || p2.length() < 10 || "null".equals(p2));
+                        // If room is stuck in finished state, reset it first
+                        if ("finished".equals(st)) {
+                            patch(existingId, "{\"player1Id\":\"\",\"player2Id\":\"\",\"status\":\"waiting\""
+                                + ",\"player1Score\":0,\"player2Score\":0,\"winner\":\"\""
+                                + ",\"ballX\":400,\"ballY\":350,\"ballDX\":8,\"ballDY\":0,\"p1PaddleY\":290,\"p2PaddleY\":290}");
+                            p1Empty = true; p2Empty = true;
+                        }
                         if (p1Empty) {
                             // Claim host slot
                             patch(existingId, "{\"player1Id\":\"" + userId + "\",\"player2Id\":\"\",\"status\":\"waiting\",\"player1Score\":0,\"player2Score\":0,\"winner\":\"\"}");
@@ -3171,6 +3201,7 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
 
                     active = true;
                     waitingForPlayer2 = isHost;
+                    joinedAt = System.currentTimeMillis();
                     final String dispId = isPersistent ? roomRef : gameId.substring(0, Math.min(6, gameId.length())).toUpperCase();
                     SwingUtilities.invokeLater(() -> {
                         loading = false;
@@ -3178,7 +3209,8 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
                         if (isHost) game.state = State.MP_WAITING;
                         else game.resetGame();
                     });
-                    SCHEDULER.scheduleAtFixedRate(this::pollServer, 0, 100, TimeUnit.MILLISECONDS);
+                    if (pollFuture != null) pollFuture.cancel(false);
+                        pollFuture = SCHEDULER.scheduleAtFixedRate(this::pollServer, 0, 33, TimeUnit.MILLISECONDS);
 
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -3233,17 +3265,24 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
                     String py = isHost ? JsonUtil.get(res, "p2PaddleY") : JsonUtil.get(res, "p1PaddleY");
                     if (py != null) remotePaddleY = (int) Float.parseFloat(py);
 
-                    if (!isHost) {
-                        // Client: take ball position from host
-                        String bx = JsonUtil.get(res, "ballX");
-                        String by = JsonUtil.get(res, "ballY");
-                        String bdx = JsonUtil.get(res, "ballDX");
-                        String bdy = JsonUtil.get(res, "ballDY");
-                        if (bx != null) rBallX = Float.parseFloat(bx);
+                    // Both host and client read ball state from DB
+                    String bx = JsonUtil.get(res, "ballX");
+                    String by = JsonUtil.get(res, "ballY");
+                    String bdx = JsonUtil.get(res, "ballDX");
+                    String bdy = JsonUtil.get(res, "ballDY");
+                    if (bx != null) {
+                        float newDX = bdx != null ? Float.parseFloat(bdx) : rBallDX;
+                        if (isHost && newDX < 0 && rBallDX >= 0) {
+                            // Ball direction flipped to leftward — client hit the right paddle
+                            clientHitPending = true;
+                        }
+                        rBallX = Float.parseFloat(bx);
                         if (by != null) rBallY = Float.parseFloat(by);
-                        if (bdx != null) rBallDX = Float.parseFloat(bdx);
+                        rBallDX = newDX;
                         if (bdy != null) rBallDY = Float.parseFloat(bdy);
+                    }
 
+                    if (!isHost) {
                         // Client: take scores from DB (host is the authority)
                         String s1s = JsonUtil.get(res, "player1Score");
                         String s2s = JsonUtil.get(res, "player2Score");
@@ -3256,8 +3295,9 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
                             });
                         }
                     }
-                    // Host: scores are local; DB is written by sendState
                 } else if ("finished".equals(status)) {
+                    // Ignore stale finished state from previous game (within 2s of joining)
+                    if (System.currentTimeMillis() - joinedAt < 2000) return;
                     // Either player: game ended (normal finish or forfeit)
                     String s1s = JsonUtil.get(res, "player1Score");
                     String s2s = JsonUtil.get(res, "player2Score");
@@ -3276,12 +3316,13 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
                         }
                     });
                 }
-            } catch (Exception e) { System.err.println("pollServer: " + e.getMessage()); }
+            } catch (Throwable e) { System.err.println("pollServer error: " + e.getMessage()); }
         }
 
         public void sendPaddleMove(int paddleY) {
             if (!active || gameId.isEmpty()) return;
             if (System.currentTimeMillis() - lastPaddleSend < 50) return;
+            if (!REQ_LIMIT.tryAcquire()) return; // skip if too many requests in flight
             lastPaddleSend = System.currentTimeMillis();
             String field = isHost ? "p1PaddleY" : "p2PaddleY";
             String payload = "{\"" + field + "\":" + paddleY + "}";
@@ -3296,12 +3337,14 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
                         .build();
                     HTTP.send(req, HttpResponse.BodyHandlers.ofString());
                 } catch (Exception e) {}
+                finally { REQ_LIMIT.release(); }
             }).start();
         }
 
         public void sendState(PongGame g) {
             if (!active || gameId.isEmpty() || !isHost) return;
             if (System.currentTimeMillis() - lastSync < 50) return;
+            if (!REQ_LIMIT.tryAcquire()) return; // skip if too many requests in flight
             lastSync = System.currentTimeMillis();
             String payload = String.format(
                 "{\"ballX\":%d,\"ballY\":%d,\"ballDX\":%d,\"ballDY\":%d," +
@@ -3320,22 +3363,28 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
                         .build();
                     HTTP.send(req, HttpResponse.BodyHandlers.ofString());
                 } catch (Exception e) {}
+                finally { REQ_LIMIT.release(); }
             }).start();
         }
 
         public void syncGame(PongGame g) {
-            if (isHost) return;
+            if (!active || isHost) return;
+            // Client: correct ball position from host authoritative state
+            // Skip snap for 200ms after a round reset to avoid jarring jumps
             g.ball.x = (int) rBallX;
             g.ball.y = (int) rBallY;
             g.ball.dx = (int) rBallDX;
             g.ball.dy = (int) rBallDY;
         }
 
+        public void pushBallState(PongGame g) {} // no longer needed — kept for compatibility
+
         public void endGame(boolean won) {
             if (!active || gameId.isEmpty() || !isHost) return;
             try {
-                patch(gameId, "{\"status\":\"finished\",\"winner\":\"" + (won ? userId : "opponent") + "\"" +
-                    ",\"player1Id\":\"\",\"player2Id\":\"\"}");
+                patch(gameId, "{\"status\":\"finished\",\"winner\":\"" + (won ? userId : "opponent") + "\""
+                    + ",\"player1Id\":\"\",\"player2Id\":\"\""
+                    + ",\"ballX\":400,\"ballY\":350,\"ballDX\":8,\"ballDY\":0,\"p1PaddleY\":290,\"p2PaddleY\":290}");
             } catch (Exception e) {}
         }
 
@@ -3348,7 +3397,8 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
                 String p2Score = isHost ? String.valueOf(WIN_SCORE) : "0";
                 patch(gameId, "{\"status\":\"finished\",\"player1Score\":" + p1Score
                     + ",\"player2Score\":" + p2Score + ",\"winner\":\"forfeit\""
-                    + ",\"player1Id\":\"\",\"player2Id\":\"\"}");
+                    + ",\"player1Id\":\"\",\"player2Id\":\"\""
+                    + ",\"ballX\":400,\"ballY\":350,\"ballDX\":8,\"ballDY\":0,\"p1PaddleY\":290,\"p2PaddleY\":290}");
             } catch (Exception e) { System.err.println("forfeit error: " + e); }
         }
     }
