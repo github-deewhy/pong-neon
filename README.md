@@ -41,9 +41,6 @@ javac beta-test/multiplayer/PongGame.java
 java -cp beta-test/multiplayer PongGame
 ```
 
-### Download pre-built JAR
-Visit [neonpong.deewhy.ovh](https://neonpong.deewhy.ovh) for the latest release.
-
 ## 🌐 Multiplayer Setup
 
 The game uses a PocketBase backend, to use your own backend:
