@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 # Neon Pong - Cyberpunk Edition
-=======
-# Neon Pong - Cyberpunk Edition v2.3 (Beta 2)
->>>>>>> 853ef6f (Update README with complete documentation)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Java Version](https://img.shields.io/badge/Java-11%2B-blue)](https://www.oracle.com/java/technologies/javase-downloads.html)
