@@ -4,10 +4,10 @@ Copyright (c) 2026 DeeWHY
 LICENSE: Proprietary software. All rights reserved.
 Unauthorized copying or distribution is prohibited.
 CREDITS:
-Development: Davide
+Development: DeeWHY
 Sound Engine: Custom Java implementation
 Visual Effects: Java 2D Graphics
-Version: 2.2 (beta 1)
+Version: 2.3 beta2
 */
 import javax.swing.*;
 import javax.swing.Timer;
@@ -123,21 +123,20 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
 
     // === MULTIPLAYER ===
     private MultiplayerManager mpManager;
-    private String mpRoomIdInput = "";       // used for joining (by ID or list)
-    private String mpCreateRoomInput = "";   // used for creating a new room
-    private String mpEmail = "";
-    private String mpPassword = "";
-    private boolean mpEmailMode = true;
-    private String mpLoginError = "";
-    private java.util.List<String[]> mpRoomList = new java.util.ArrayList<>(); // [roomId, gameId, status]
-    private java.util.List<String[]> mpPersistentRooms = new java.util.ArrayList<>(); // [name, gameId, status]
-    private int mpSelectedRoom = -10; // -10..-13=persistent card 0..3; >=0=custom room
+    private String mpCurrentRoomId = "";      // room ID for current session
+    private java.util.List<String[]> mpPersistentRooms = new java.util.ArrayList<>();
     static final String[][] PERSISTENT_ROOMS = {
         {"ROOKIE",  "#00CC66"},
         {"VETERAN", "#DDAA00"},
         {"ELITE",   "#FF4444"},
         {"LEGEND",  "#CC44FF"},
     };
+    private String mpEmail = "";
+    private String mpPassword = "";
+    private boolean mpEmailMode = true;
+    private String mpLoginError = "";
+    private java.util.List<String[]> mpRoomList = new java.util.ArrayList<>(); // [roomId, gameId, status]
+    private int mpSelectedRoom = -10; // -10..-13=card 0..3; -2=create btn; >=0=custom room
     private long mpLastRoomFetch = 0;
     private int mpOnlinePlayers = 0;   // stats from server
     private int mpActiveRooms = 0;
@@ -578,19 +577,13 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
     }
 
     private void drawMultiplayerLobby(Graphics2D g) {
-        // Periodically fetch open rooms every 3 seconds
         long now = System.currentTimeMillis();
-        if (now - mpLastRoomFetch > 3000) {
-            mpLastRoomFetch = now;
-            mpManager.fetchOpenRooms();
-        }
+        if (now - mpLastRoomFetch > 3000) { mpLastRoomFetch = now; mpManager.fetchOpenRooms(); }
 
-        // Full background
         GradientPaint bg = new GradientPaint(0, 0, new Color(2, 4, 18), 0, GAME_HEIGHT, new Color(8, 12, 35));
         g.setPaint(bg); g.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
         int W = GAME_WIDTH, H = GAME_HEIGHT, cx = W / 2;
 
-        // Panel
         int panelW = 720; int panelH = 580;
         int panelX = cx - panelW/2; int panelY = (H - panelH)/2 - 10;
         for (int i = 6; i > 0; i--) { g.setColor(new Color(150, 0, 255, i * 7)); g.fillRoundRect(panelX-i*3, panelY-i*3, panelW+i*6, panelH+i*6, 22, 22); }
@@ -600,54 +593,30 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
         g.drawRoundRect(panelX, panelY, panelW, panelH, 18, 18);
 
         FontMetrics fm;
+        int sectionX = panelX + 24; int sectionW = panelW - 48;
 
         // ── HEADER ───────────────────────────────────────────────────────────
         g.setFont(new Font("Segoe UI", Font.BOLD, 26)); fm = g.getFontMetrics();
         g.setColor(new Color(200, 100, 255));
         g.drawString("GAME LOBBY", cx - fm.stringWidth("GAME LOBBY")/2, panelY + 42);
-        // Account button
         renderButton(g, panelX + panelW - 170, panelY + 14, 155, 30, "MY ACCOUNT  ⚙", true, new Color(50, 80, 150));
-        // Divider
         g.setColor(new Color(60, 40, 90)); g.setStroke(new BasicStroke(1));
         g.drawLine(panelX + 24, panelY + 56, panelX + panelW - 24, panelY + 56);
 
-        // ── SECTION A: CREATE A ROOM ─────────────────────────────────────────
-        int sectionX = panelX + 24; int sectionW = panelW - 48;
-
-        // Section label
-        g.setFont(new Font("Segoe UI", Font.BOLD, 13)); fm = g.getFontMetrics();
-        g.setColor(new Color(180, 80, 255));
-        g.drawString("① CREATE A NEW ROOM", sectionX, panelY + 80);
-        g.setFont(new Font("Segoe UI", Font.PLAIN, 12)); fm = g.getFontMetrics();
-        g.setColor(TEXT_SECONDARY);
-        g.drawString("Pick a name, create the room and wait for someone to join.", sectionX, panelY + 95);
-
-        // Create input + button inline  (label drawn 8px above box → box at +118 means label at +110, clear of description at +95)
-        int createFieldW = sectionW - 170; int fieldH = 42;
-        boolean createFocused = mpSelectedRoom == -2;
-        drawInputBox(g, sectionX, panelY + 118, createFieldW, fieldH, "ROOM NAME", mpCreateRoomInput, createFocused, false);
-        boolean canCreate = !mpCreateRoomInput.isEmpty() && !mpManager.isLoading();
-        renderButton(g, sectionX + createFieldW + 14, panelY + 118, sectionW - createFieldW - 14, fieldH, "CREATE  →", canCreate, new Color(120, 0, 200));
-
-        // ── DIVIDER ──────────────────────────────────────────────────────────
-        int divY = panelY + 162;
-        g.setColor(new Color(60, 40, 90)); g.setStroke(new BasicStroke(1));
-        g.drawLine(sectionX, divY, sectionX + sectionW, divY);
-
-        // ── SECTION B: QUICK JOIN ────────────────────────────────────────────
+        // ── SECTION A: QUICK JOIN (persistent ranked rooms) ──────────────────
         g.setFont(new Font("Segoe UI", Font.BOLD, 13)); fm = g.getFontMetrics();
         g.setColor(new Color(0, 210, 100));
-        g.drawString("② QUICK JOIN", sectionX, panelY + 180);
+        g.drawString("① QUICK JOIN", sectionX, panelY + 78);
         String statsStr = "● " + mpOnlinePlayers + " online   ✕ " + mpActiveRooms + " playing";
         g.setFont(new Font("Segoe UI", Font.PLAIN, 11)); fm = g.getFontMetrics();
         g.setColor(new Color(90, 85, 130));
-        g.drawString(statsStr, sectionX + sectionW - fm.stringWidth(statsStr), panelY + 180);
+        g.drawString(statsStr, sectionX + sectionW - fm.stringWidth(statsStr), panelY + 78);
         g.setFont(new Font("Segoe UI", Font.PLAIN, 11)); fm = g.getFontMetrics();
         g.setColor(TEXT_SECONDARY);
-        g.drawString("Ranked rooms — always open.  ←→ pick, ENTER to join.", sectionX, panelY + 194);
+        g.drawString("Ranked rooms — always open.  ←→ pick, ENTER to join.", sectionX, panelY + 92);
 
-        // ── 4 PERSISTENT ROOM CARDS ──────────────────────────────────────────
-        int cardY = panelY + 202; int cardH = 64; int cardGap = 8;
+        // 4 persistent cards
+        int cardY = panelY + 104; int cardH = 62; int cardGap = 8;
         int cardW = (sectionW - cardGap * 3) / 4;
         for (int i = 0; i < 4; i++) {
             String pName = PERSISTENT_ROOMS[i][0];
@@ -657,12 +626,7 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
             boolean busy = "playing".equals(pStat);
             boolean sel = (mpSelectedRoom == -10 - i);
             int cx2 = sectionX + i * (cardW + cardGap);
-            if (sel) {
-                for (int s = 4; s > 0; s--) {
-                    g.setColor(new Color(rc.getRed(), rc.getGreen(), rc.getBlue(), s * 20));
-                    g.fillRoundRect(cx2 - s*2, cardY - s*2, cardW + s*4, cardH + s*4, 12, 12);
-                }
-            }
+            if (sel) { for (int s = 4; s > 0; s--) { g.setColor(new Color(rc.getRed(), rc.getGreen(), rc.getBlue(), s * 20)); g.fillRoundRect(cx2-s*2, cardY-s*2, cardW+s*4, cardH+s*4, 12, 12); } }
             Color bgDark = new Color(Math.max(0,rc.getRed()/6), Math.max(0,rc.getGreen()/6), Math.max(0,rc.getBlue()/6), 230);
             Color bgMid  = new Color(Math.max(0,rc.getRed()/3), Math.max(0,rc.getGreen()/3), Math.max(0,rc.getBlue()/3), 220);
             g.setPaint(new GradientPaint(cx2, cardY, sel ? bgMid : bgDark, cx2, cardY+cardH, bgDark));
@@ -670,36 +634,74 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
             g.setColor(new Color(rc.getRed(), rc.getGreen(), rc.getBlue(), sel ? 240 : 90));
             g.setStroke(new BasicStroke(sel ? 2f : 1f));
             g.drawRoundRect(cx2, cardY, cardW, cardH, 8, 8);
-            // Name
             g.setFont(new Font("Segoe UI", Font.BOLD, 15)); fm = g.getFontMetrics();
             g.setColor(new Color(rc.getRed(), rc.getGreen(), rc.getBlue(), sel ? 255 : 200));
-            g.drawString(pName, cx2 + cardW/2 - fm.stringWidth(pName)/2, cardY + 25);
-            // Status pill
+            g.drawString(pName, cx2 + cardW/2 - fm.stringWidth(pName)/2, cardY + 24);
             Color stCol = busy ? new Color(255, 150, 0) : occupied ? new Color(255, 200, 0) : new Color(0, 210, 100);
             String stTxt = busy ? "● PLAYING" : occupied ? "● 1 WAITING" : "● OPEN";
             g.setFont(new Font("Segoe UI", Font.BOLD, 10)); fm = g.getFontMetrics();
             int pillW = fm.stringWidth(stTxt) + 10;
             g.setColor(new Color(stCol.getRed(), stCol.getGreen(), stCol.getBlue(), 50));
-            g.fillRoundRect(cx2 + cardW/2 - pillW/2, cardY + 33, pillW, 16, 8, 8);
+            g.fillRoundRect(cx2 + cardW/2 - pillW/2, cardY + 32, pillW, 15, 7, 7);
             g.setColor(stCol);
-            g.drawString(stTxt, cx2 + cardW/2 - fm.stringWidth(stTxt)/2, cardY + 45);
+            g.drawString(stTxt, cx2 + cardW/2 - fm.stringWidth(stTxt)/2, cardY + 43);
             if (sel) {
                 g.setFont(new Font("Segoe UI", Font.PLAIN, 9)); fm = g.getFontMetrics();
                 g.setColor(new Color(rc.getRed(), rc.getGreen(), rc.getBlue(), 170));
-                String et = "ENTER to join";
-                g.drawString(et, cx2 + cardW/2 - fm.stringWidth(et)/2, cardY + cardH - 4);
+                String et = "ENTER to join"; g.drawString(et, cx2 + cardW/2 - fm.stringWidth(et)/2, cardY + cardH - 4);
             }
         }
 
-        // ── CUSTOM ROOMS (if any) ─────────────────────────────────────────────
-        int listY = cardY + cardH + 8;
-        if (!mpRoomList.isEmpty()) {
-            g.setFont(new Font("Segoe UI", Font.BOLD, 11)); fm = g.getFontMetrics();
-            g.setColor(new Color(130, 110, 170));
-            g.drawString("CUSTOM ROOMS", sectionX, listY + 12);
-            listY += 16;
-            int rowH = 36; int listW = sectionW;
-            for (int i = 0; i < mpRoomList.size() && i < 2; i++) {
+        // ── DIVIDER ──────────────────────────────────────────────────────────
+        int divY = cardY + cardH + 8;
+        g.setColor(new Color(60, 40, 90)); g.setStroke(new BasicStroke(1));
+        g.drawLine(sectionX, divY, sectionX + sectionW, divY);
+
+        // ── SECTION B: CREATE A CUSTOM ROOM ──────────────────────────────────
+        g.setFont(new Font("Segoe UI", Font.BOLD, 13)); fm = g.getFontMetrics();
+        g.setColor(new Color(180, 80, 255));
+        g.drawString("② CREATE A CUSTOM ROOM", sectionX, divY + 20);
+        g.setFont(new Font("Segoe UI", Font.PLAIN, 11)); fm = g.getFontMetrics();
+        g.setColor(TEXT_SECONDARY);
+        g.drawString("Create a private room and wait for someone to join.", sectionX, divY + 35);
+
+        boolean canCreate = !mpManager.isLoading();
+        boolean createSel = (mpSelectedRoom == -2);
+        Color createBg = createSel ? new Color(160, 20, 255) : new Color(100, 0, 180);
+        int createBtnY = divY + 48;
+        if (createSel) { for (int s = 3; s > 0; s--) { g.setColor(new Color(160, 20, 255, s * 22)); g.fillRoundRect(sectionX - s*2, createBtnY - s*2, sectionW + s*4, 34 + s*4, 10, 10); } }
+        renderButton(g, sectionX, createBtnY, sectionW, 34, createSel ? "⚡  CREATE ROOM  — ENTER to confirm" : "⚡  CREATE ROOM", canCreate, createBg);
+
+        // ── DIVIDER ──────────────────────────────────────────────────────────
+        int div2Y = createBtnY + 34 + 10;
+        g.setColor(new Color(60, 40, 90)); g.setStroke(new BasicStroke(1));
+        g.drawLine(sectionX, div2Y, sectionX + sectionW, div2Y);
+
+        // ── SECTION C: CUSTOM ROOMS (player-created) ──────────────────────────
+        int listTopY = div2Y + 10;
+        g.setFont(new Font("Segoe UI", Font.BOLD, 13)); fm = g.getFontMetrics();
+        g.setColor(new Color(0, 160, 255));
+        g.drawString("③ JOIN A CUSTOM ROOM", sectionX, listTopY + 14);
+        g.setFont(new Font("Segoe UI", Font.PLAIN, 11)); fm = g.getFontMetrics();
+        g.setColor(TEXT_SECONDARY);
+        g.drawString("Rooms created by other players, waiting for an opponent.", sectionX, listTopY + 28);
+
+        int listY = listTopY + 36;
+        int rowH = 38; int listW = sectionW;
+        int maxCustom = 3;
+
+        if (mpRoomList.isEmpty()) {
+            int emptyH = maxCustom * (rowH + 4) - 4;
+            g.setColor(new Color(14, 12, 32));
+            g.fillRoundRect(sectionX, listY, listW, emptyH, 8, 8);
+            g.setColor(new Color(40, 35, 65)); g.setStroke(new BasicStroke(1));
+            g.drawRoundRect(sectionX, listY, listW, emptyH, 8, 8);
+            g.setFont(new Font("Segoe UI", Font.PLAIN, 13)); fm = g.getFontMetrics();
+            g.setColor(new Color(60, 55, 90));
+            String empty = "No custom rooms waiting — create one above!";
+            g.drawString(empty, cx - fm.stringWidth(empty)/2, listY + emptyH/2 + 5);
+        } else {
+            for (int i = 0; i < mpRoomList.size() && i < maxCustom; i++) {
                 String[] room = mpRoomList.get(i);
                 boolean sel = (mpSelectedRoom == i);
                 int ry = listY + i * (rowH + 4);
@@ -708,30 +710,20 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
                 g.fillRoundRect(sectionX, ry, listW, rowH, 6, 6);
                 g.setColor(sel ? new Color(0,200,90) : new Color(42,36,68)); g.setStroke(new BasicStroke(sel ? 1.5f : 1f));
                 g.drawRoundRect(sectionX, ry, listW, rowH, 6, 6);
+                // host name (use room[0] as display — first 8 chars of ID for privacy)
+                String dispName = "Room #" + room[0].substring(0, Math.min(6, room[0].length())).toUpperCase();
                 g.setFont(new Font("Segoe UI", Font.BOLD, 14)); fm = g.getFontMetrics();
                 g.setColor(sel ? Color.WHITE : new Color(185,180,225));
-                g.drawString(room[0], sectionX + 14, ry + 23);
+                g.drawString(dispName, sectionX + 14, ry + 16);
                 g.setFont(new Font("Segoe UI", Font.BOLD, 10)); fm = g.getFontMetrics();
                 g.setColor(new Color(0,200,90));
-                g.drawString("● WAITING", sectionX + 14, ry + 33);
-                String act = sel ? "ENTER ↵ to join" : "↑↓ to select";
-                g.setFont(new Font("Segoe UI", Font.PLAIN, 11)); fm = g.getFontMetrics();
+                g.drawString("● WAITING", sectionX + 14, ry + 30);
+                String act = sel ? "ENTER ↵ to join" : "↑↓ select";
+                g.setFont(new Font("Segoe UI", Font.PLAIN, 12)); fm = g.getFontMetrics();
                 g.setColor(sel ? new Color(0,220,110) : new Color(65,58,95));
-                g.drawString(act, sectionX + listW - fm.stringWidth(act) - 12, ry + rowH/2 + 5);
+                g.drawString(act, sectionX + listW - fm.stringWidth(act) - 12, ry + rowH/2 + 4);
             }
-            listY += Math.min(mpRoomList.size(), 2) * (rowH + 4) + 4;
         }
-
-        // ── DIRECT ID JOIN ───────────────────────────────────────────────────
-        g.setColor(new Color(50, 40, 70)); g.setStroke(new BasicStroke(1));
-        g.drawLine(sectionX, listY + 2, sectionX + sectionW, listY + 2);
-        g.setFont(new Font("Segoe UI", Font.BOLD, 11)); fm = g.getFontMetrics();
-        g.setColor(new Color(0, 150, 240));
-        g.drawString("Or join directly by Room ID:", sectionX, listY + 17);
-        int joinFieldW = sectionW - 130;
-        drawInputBox(g, sectionX, listY + 22, joinFieldW, 32, "", mpRoomIdInput, mpSelectedRoom == -3, false);
-        boolean canJoin = !mpRoomIdInput.isEmpty() && !mpManager.isLoading();
-        renderButton(g, sectionX + joinFieldW + 10, listY + 22, sectionW - joinFieldW - 10, 32, "JOIN  →", canJoin, new Color(0, 110, 200));
 
         // ── STATUS / ERROR ───────────────────────────────────────────────────
         if (mpManager.isLoading()) {
@@ -744,9 +736,9 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
             g.drawString(mpLoginError, cx - fm.stringWidth(mpLoginError)/2, panelY + panelH - 34);
         }
 
-        // ── FOOTER HINTS ─────────────────────────────────────────────────────
+        // ── FOOTER ───────────────────────────────────────────────────────────
         g.setFont(new Font("Segoe UI", Font.PLAIN, 11)); fm = g.getFontMetrics();
-        String hint = "←→  pick room    ENTER  join    A  account    ESC  main menu";
+        String hint = "←→  ranked rooms    ↓  custom rooms    ENTER  join/create    A  account    ESC  menu";
         g.setColor(new Color(60, 50, 90));
         g.drawString(hint, cx - fm.stringWidth(hint)/2, panelY + panelH - 14);
     }
@@ -783,7 +775,7 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
         g.drawString(msg, centerX - fm.stringWidth(msg)/2, panelY + 125);
         g.setFont(new Font("Segoe UI", Font.BOLD, 32)); fm = g.getFontMetrics();
         g.setColor(new Color(0, 255, 180));
-        String rid = mpRoomIdInput;
+        String rid = mpCurrentRoomId;
         g.drawString(rid, centerX - fm.stringWidth(rid)/2, panelY + 175);
         g.setFont(new Font("Segoe UI", Font.PLAIN, 13)); fm = g.getFontMetrics();
         g.setColor(new Color(255, 100, 100));
@@ -2020,7 +2012,7 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
                     javax.swing.Timer delay = new javax.swing.Timer(300, ev -> {
                         mpManager.resetRoom();
                         state = State.MP_LOBBY;
-                        mpRoomIdInput = ""; mpCreateRoomInput = ""; mpSelectedRoom = -10;
+                        mpCurrentRoomId = ""; mpSelectedRoom = -10; mpLastRoomFetch = 0;
                     });
                     delay.setRepeats(false);
                     delay.start();
@@ -2034,7 +2026,7 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
                     javax.swing.Timer delay = new javax.swing.Timer(300, ev -> {
                         mpManager.resetRoom();
                         state = State.MP_LOBBY;
-                        mpRoomIdInput = ""; mpCreateRoomInput = ""; mpSelectedRoom = -10;
+                        mpCurrentRoomId = ""; mpSelectedRoom = -10; mpLastRoomFetch = 0;
                     });
                     delay.setRepeats(false);
                     delay.start();
@@ -2047,7 +2039,7 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
                 if (mpManager.isConnected()) {
                     mpManager.resetRoom();
                     state = State.MP_LOBBY;
-                    mpRoomIdInput = ""; mpCreateRoomInput = ""; mpSelectedRoom = -10;
+                    mpCurrentRoomId = ""; mpSelectedRoom = -10; mpLastRoomFetch = 0;
                 } else {
                     state = State.EXIT_CONFIRM;
                 }
@@ -2065,8 +2057,10 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
                 // Go back to main menu but stay logged in
                 state = State.MENU;
             } else if (state == State.MP_WAITING) {
-                mpManager.disconnect();
+                mpManager.cancelWaiting();
                 state = State.MP_LOBBY;
+                mpCurrentRoomId = ""; mpSelectedRoom = -10;
+                mpLastRoomFetch = 0; // force immediate refresh
             } else if (state == State.MP_ACCOUNT) {
                 mpLoginError = "";
                 state = State.MP_LOBBY;
@@ -2173,10 +2167,8 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
         }
 
         if (state == State.MP_LOBBY) {
-            if (k == KeyEvent.VK_A) {
-                mpLoginError = ""; mpAccountTab = 0; mpAccountField = 0;
-                mpAccountNewEmail = ""; mpAccountNewPassword = ""; mpAccountConfirm = "";
-                state = State.MP_ACCOUNT;
+            if (k == KeyEvent.VK_ESCAPE) {
+                mpManager.disconnect(); state = State.MENU; mpSelectedRoom = -10; mpLoginError = "";
             } else if (k == KeyEvent.VK_LEFT) {
                 if (mpSelectedRoom <= -10) mpSelectedRoom = Math.min(-10, mpSelectedRoom + 1);
                 else mpSelectedRoom = -10;
@@ -2184,32 +2176,34 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
                 if (mpSelectedRoom <= -10) mpSelectedRoom = Math.max(-13, mpSelectedRoom - 1);
                 else mpSelectedRoom = -10;
             } else if (k == KeyEvent.VK_UP) {
-                if (mpSelectedRoom >= 0) mpSelectedRoom = -10;
+                // UP = toward top: list → create → cards
+                if (mpSelectedRoom > 0) mpSelectedRoom--;
+                else if (mpSelectedRoom == 0) mpSelectedRoom = -2;
+                else if (mpSelectedRoom == -2) mpSelectedRoom = -10;
             } else if (k == KeyEvent.VK_DOWN) {
-                if (mpSelectedRoom <= -10 && !mpRoomList.isEmpty()) mpSelectedRoom = 0;
-                else if (mpSelectedRoom >= 0) mpSelectedRoom = Math.min(Math.min(mpRoomList.size()-1, 1), mpSelectedRoom + 1);
+                // DOWN = toward bottom: cards → create → list
+                if (mpSelectedRoom <= -10) mpSelectedRoom = -2;
+                else if (mpSelectedRoom == -2 && !mpRoomList.isEmpty()) mpSelectedRoom = 0;
+                else if (mpSelectedRoom >= 0) mpSelectedRoom = Math.min(Math.min(mpRoomList.size()-1, 2), mpSelectedRoom + 1);
             } else if (k == KeyEvent.VK_ENTER) {
-                if (mpSelectedRoom <= -10) {
+                mpLoginError = "";
+                if (mpSelectedRoom <= -10 && mpSelectedRoom >= -13) {
+                    // Join a persistent ranked room
                     int pi = -10 - mpSelectedRoom;
-                    if (pi < mpPersistentRooms.size()) {
-                        mpLoginError = "";
-                        mpManager.joinOrCreateRoom(mpPersistentRooms.get(pi)[0]);
-                    }
+                    if (pi < mpPersistentRooms.size()) mpManager.joinOrCreateRoom(mpPersistentRooms.get(pi)[0], false);
                 } else if (mpSelectedRoom >= 0 && mpSelectedRoom < mpRoomList.size()) {
-                    mpManager.joinOrCreateRoom(mpRoomList.get(mpSelectedRoom)[0]);
-                } else if (!mpRoomIdInput.isEmpty()) {
-                    mpManager.joinOrCreateRoom(mpRoomIdInput);
+                    // Join a custom room
+                    mpManager.joinOrCreateRoom(mpRoomList.get(mpSelectedRoom)[1], false);
+                } else {
+                    // Create a new custom room (auto-ID)
+                    mpManager.joinOrCreateRoom(null, true);
                 }
-            } else if (k == KeyEvent.VK_BACK_SPACE) {
-                if (!mpRoomIdInput.isEmpty()) {
-                    mpRoomIdInput = mpRoomIdInput.substring(0, mpRoomIdInput.length() - 1);
-                }
-            } else {
-                char c = e.getKeyChar();
-                if (c != KeyEvent.CHAR_UNDEFINED && c >= 32 && c < 127) {
-                    mpRoomIdInput += c;
-                }
+            } else if (k == KeyEvent.VK_A) {
+                mpLoginError = ""; mpAccountTab = 0; mpAccountField = 0;
+                mpAccountNewEmail = ""; mpAccountNewPassword = ""; mpAccountConfirm = "";
+                state = State.MP_ACCOUNT;
             }
+            // All other keys consumed silently — no text input leaking to shortcuts
             return;
         }
 
@@ -2254,7 +2248,7 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
                     // MP: go back to lobby, still logged in, ready to play again
                     mpManager.resetRoom();
                     state = State.MP_LOBBY;
-                    mpRoomIdInput = ""; mpCreateRoomInput = ""; mpSelectedRoom = -10;
+                    mpCurrentRoomId = ""; mpSelectedRoom = -10; mpLastRoomFetch = 0;
                 } else {
                     state = State.DIFFICULTY;
                 }
@@ -2720,6 +2714,7 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
         private String userId = "";
         private String gameId = "";
         private boolean isHost = false;
+        private boolean isCustomRoom = false; // true = player-created room (should be deleted on cancel)
         private boolean active = false;
         private boolean loading = false;
         private long lastSync = 0;
@@ -2738,12 +2733,39 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
         public boolean isMultiplayerActive() { return active && !gameId.isEmpty(); }
         public boolean isHost() { return isHost; }
         public void resetRoom() {
-            // Keep token + userId (still logged in), just clear local game session state.
-            // NOTE: Do NOT touch the DB here — room cleanup is handled by endGame/forfeitGame.
+            // Keep token + userId (still logged in), just clear the game session
             active = false;
             gameId = "";
             isHost = false;
+            isCustomRoom = false;
             waitingForPlayer2 = false;
+            remotePaddleY = (GAME_HEIGHT - PADDLE_HEIGHT) / 2;
+            rBallX = rBallY = rBallDX = rBallDY = 0;
+        }
+
+        /** Called when host exits MP_WAITING before any opponent joined.
+         *  Deletes custom rooms or clears the slot on persistent rooms. */
+        public void cancelWaiting() {
+            if (!gameId.isEmpty() && !token.isEmpty()) {
+                final String gId = gameId; final String tok = token; final boolean custom = isCustomRoom;
+                new Thread(() -> {
+                    try {
+                        if (custom) {
+                            // Delete the custom room entirely so it doesn't orphan in the list
+                            var req = HttpRequest.newBuilder()
+                                .uri(URI.create(BASE_URL + "/api/collections/games/records/" + gId))
+                                .header("Authorization", tok)
+                                .method("DELETE", HttpRequest.BodyPublishers.noBody()).build();
+                            HTTP.send(req, HttpResponse.BodyHandlers.ofString());
+                        } else {
+                            // Persistent room: just clear our slot
+                            patch(gId, "{\"player1Id\":\"\",\"player2Id\":\"\",\"status\":\"waiting\""
+                                + ",\"player1Score\":0,\"player2Score\":0,\"winner\":\"\"}");
+                        }
+                    } catch (Exception e) { System.err.println("cancelWaiting: " + e); }
+                }).start();
+            }
+            active = false; gameId = ""; isHost = false; isCustomRoom = false; waitingForPlayer2 = false;
             remotePaddleY = (GAME_HEIGHT - PADDLE_HEIGHT) / 2;
             rBallX = rBallY = rBallDX = rBallDY = 0;
         }
@@ -2762,7 +2784,7 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
             if (token.isEmpty()) return;
             new Thread(() -> {
                 try {
-                    // ── 1. READ EACH PERSISTENT ROOM — derive 3-state status ──
+                    // ── 1. PERSISTENT RANKED ROOMS ───────────────────────────
                     java.util.List<String[]> persistent = new java.util.ArrayList<>();
                     for (String[] pr : PongGame.PERSISTENT_ROOMS) {
                         String pName = pr[0];
@@ -2780,27 +2802,20 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
                             String st  = JsonUtil.get(item, "status");
                             boolean p1ok = (p1 != null && p1.length() >= 10 && !"null".equals(p1));
                             boolean p2ok = (p2 != null && p2.length() >= 10 && !"null".equals(p2));
-                            // Derive display from actual slot occupancy (not just status field)
-                            String disp;
-                            if ("finished".equals(st)) {
-                                // Finished but not yet cleaned up — show as open
-                                disp = "waiting";
-                            } else if (p1ok && p2ok) {
-                                disp = "playing";
-                            } else if (p1ok) {
-                                disp = "occupied"; // 1 player waiting for opponent
-                            } else {
-                                disp = "waiting";
-                            }
-                            persistent.add(new String[]{pName, gid != null ? gid : "", disp});
+                            boolean isSelf = userId != null && userId.equals(p1);
+                            String disp = "finished".equals(st) ? "waiting"
+                                        : (p1ok && p2ok)        ? "playing"
+                                        : (p1ok && !isSelf)     ? "occupied"  // someone else waiting
+                                        :                         "waiting";  // empty or we own slot 1
+                            if (gid != null) persistent.add(new String[]{pName, gid, disp});
                         } else {
-                            // Create this persistent room for the first time
+                            // Create persistent room for the first time
                             String payload = "{\"roomId\":\"" + pName + "\",\"player1Id\":\"\",\"player2Id\":\"\"" +
                                 ",\"player1Score\":0,\"player2Score\":0,\"winner\":\"\"" +
                                 ",\"ballX\":" + (PongGame.GAME_WIDTH/2) + ",\"ballY\":" + (PongGame.GAME_HEIGHT/2) +
                                 ",\"ballDX\":8,\"ballDY\":0" +
-                                ",\"p1PaddleY\":" + ((PongGame.GAME_HEIGHT - PongGame.PADDLE_HEIGHT)/2) +
-                                ",\"p2PaddleY\":" + ((PongGame.GAME_HEIGHT - PongGame.PADDLE_HEIGHT)/2) +
+                                ",\"p1PaddleY\":" + ((PongGame.GAME_HEIGHT-PongGame.PADDLE_HEIGHT)/2) +
+                                ",\"p2PaddleY\":" + ((PongGame.GAME_HEIGHT-PongGame.PADDLE_HEIGHT)/2) +
                                 ",\"status\":\"waiting\"}";
                             var cReq = HttpRequest.newBuilder()
                                 .uri(URI.create(BASE_URL + "/api/collections/games/records"))
@@ -2808,11 +2823,11 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
                                 .POST(HttpRequest.BodyPublishers.ofString(payload)).build();
                             var cRes = HTTP.send(cReq, HttpResponse.BodyHandlers.ofString()).body();
                             String gid = JsonUtil.get(cRes, "id");
-                            persistent.add(new String[]{pName, gid != null ? gid : "", "waiting"});
+                            if (gid != null) persistent.add(new String[]{pName, gid, "waiting"});
                         }
                     }
 
-                    // ── 2. USER-CREATED WAITING ROOMS (skip persistent names) ─
+                    // ── 2. CUSTOM WAITING ROOMS (skip persistent, skip own rooms) ─
                     var req2 = HttpRequest.newBuilder()
                         .uri(URI.create(BASE_URL + "/api/collections/games/records?filter=(status%3D'waiting')&sort=-created&perPage=20"))
                         .header("Authorization", token).build();
@@ -2835,15 +2850,19 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
                             }
                             String rec = res2.substring(recStart, pos);
                             String rid = JsonUtil.get(rec, "roomId");
-                            String gid2 = JsonUtil.get(rec, "id");
+                            String gid = JsonUtil.get(rec, "id");
+                            String p1  = JsonUtil.get(rec, "player1Id");
                             boolean isPersist = false;
                             for (String[] p : PongGame.PERSISTENT_ROOMS) if (p[0].equals(rid)) { isPersist = true; break; }
-                            if (!isPersist && rid != null && !rid.isEmpty() && gid2 != null)
-                                rooms.add(new String[]{rid, gid2, "waiting"});
+                            boolean isMine = userId != null && userId.equals(p1);
+                            boolean hasHost = p1 != null && p1.length() >= 10 && !"null".equals(p1);
+                            // Show custom rooms: not persistent, not ours, and has a real host waiting
+                            if (!isPersist && !isMine && hasHost && gid != null && gid.length() > 5)
+                                rooms.add(new String[]{rid, gid, "waiting"});
                         }
                     }
 
-                    // ── 3. STATS ─────────────────────────────────────────────
+                    // ── 3. STATS ──────────────────────────────────────────────
                     var sReq = HttpRequest.newBuilder()
                         .uri(URI.create(BASE_URL + "/api/collections/games/records?filter=(status%3D'playing')&perPage=1"))
                         .header("Authorization", token).build();
@@ -3032,7 +3051,7 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
                         SwingUtilities.invokeLater(() -> {
                             loading = false;
                             game.mpLoginError = "";
-                            game.mpRoomIdInput = ""; game.mpCreateRoomInput = "";
+                            game.mpCurrentRoomId = "";
                             game.state = State.MP_LOBBY;
                         });
                     } else {
@@ -3066,123 +3085,125 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
             return null;
         }
 
-        public void joinOrCreateRoom(String roomId) {
+        /** Join a room by gameId (DB record id) or persistent roomId, or create a new one.
+         *  @param roomRef  for persistent: room name (e.g. "ROOKIE"); for custom join: DB record id; null = auto-create
+         *  @param autoCreate  true = generate a new room (ignore roomRef) */
+        public void joinOrCreateRoom(String roomRef, boolean autoCreate) {
             loading = true;
             new Thread(() -> {
                 try {
-                    var req = HttpRequest.newBuilder()
-                        .uri(URI.create(BASE_URL + "/api/collections/games/records?filter=(roomId%3D'" + roomId + "')"))
-                        .header("Authorization", token)
-                        .build();
-                    var res = HTTP.send(req, HttpResponse.BodyHandlers.ofString()).body();
-                    System.out.println("[join] list response: " + res.substring(0, Math.min(400, res.length())));
-                    String arrKey = "\"items\":[";
-                    int ai = res.indexOf(arrKey);
-                    String firstItem = ai >= 0 ? firstArrayItem(res.substring(ai + arrKey.length())) : null;
-
-                    // Check if this is a persistent room
-                    boolean isPersistent = false;
-                    for (String[] pr : PongGame.PERSISTENT_ROOMS) {
-                        if (pr[0].equals(roomId)) { isPersistent = true; break; }
-                    }
-
-                    if (firstItem != null && firstItem.contains("\"id\"")) {
-                        String existingId = JsonUtil.get(firstItem, "id");
-                        String p1 = JsonUtil.get(firstItem, "player1Id");
-                        String p2 = JsonUtil.get(firstItem, "player2Id");
-                        boolean p1Empty = (p1 == null || p1.isEmpty() || "null".equals(p1) || p1.length() < 10);
-                        boolean p2Empty = (p2 == null || p2.isEmpty() || "null".equals(p2) || p2.length() < 10);
-
-                        if (isPersistent) {
-                            // Persistent room: slot-based assignment
-                            if (p1Empty) {
-                                // Claim player1 slot → become host, wait for player2
-                                var patch = HttpRequest.newBuilder()
-                                    .uri(URI.create(BASE_URL + "/api/collections/games/records/" + existingId))
-                                    .header("Content-Type", "application/json").header("Authorization", token)
-                                    .method("PATCH", HttpRequest.BodyPublishers.ofString(
-                                        "{\"player1Id\":\"" + userId + "\",\"player2Id\":\"\",\"status\":\"waiting\"" +
-                                        ",\"player1Score\":0,\"player2Score\":0,\"winner\":\"\"}"))
-                                    .build();
-                                HTTP.send(patch, HttpResponse.BodyHandlers.ofString());
-                                gameId = existingId; isHost = true;
-                            } else if (p2Empty) {
-                                // Claim player2 slot → become client, start game
-                                var patch = HttpRequest.newBuilder()
-                                    .uri(URI.create(BASE_URL + "/api/collections/games/records/" + existingId))
-                                    .header("Content-Type", "application/json").header("Authorization", token)
-                                    .method("PATCH", HttpRequest.BodyPublishers.ofString(
-                                        "{\"player2Id\":\"" + userId + "\",\"status\":\"playing\"}"))
-                                    .build();
-                                HTTP.send(patch, HttpResponse.BodyHandlers.ofString());
-                                gameId = existingId; isHost = false;
-                            } else {
-                                SwingUtilities.invokeLater(() -> {
-                                    loading = false;
-                                    game.mpLoginError = "Room is full — try another";
-                                    new javax.swing.Timer(2000, ev -> { game.mpLoginError = ""; ((javax.swing.Timer)ev.getSource()).stop(); }).start();
-                                });
-                                return;
-                            }
-                        } else {
-                            // Custom room: first joiner created it as host; second joiner is client
-                            if (!p2Empty) {
-                                SwingUtilities.invokeLater(() -> {
-                                    loading = false;
-                                    game.mpLoginError = "Room is full — try a different Room ID";
-                                    new javax.swing.Timer(2000, ev -> { game.mpLoginError = ""; ((javax.swing.Timer)ev.getSource()).stop(); }).start();
-                                });
-                                return;
-                            }
-                            var patch = HttpRequest.newBuilder()
-                                .uri(URI.create(BASE_URL + "/api/collections/games/records/" + existingId))
-                                .header("Content-Type", "application/json").header("Authorization", token)
-                                .method("PATCH", HttpRequest.BodyPublishers.ofString(
-                                    "{\"player2Id\":\"" + userId + "\",\"status\":\"playing\"}"))
-                                .build();
-                            HTTP.send(patch, HttpResponse.BodyHandlers.ofString());
-                            gameId = existingId; isHost = false;
-                        }
-                    } else {
-                        // No record found — create a new custom room (caller is host/player1)
-                        var payload = "{\"roomId\":\"" + roomId + "\",\"player1Id\":\"" + userId +
-                            "\",\"player2Id\":\"\",\"player1Score\":0,\"player2Score\":0,\"winner\":\"\"" +
+                    if (autoCreate || roomRef == null) {
+                        // ── CREATE a new custom room with a generated ID ──────
+                        String genId = java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+                        var payload = "{\"roomId\":\"" + genId + "\",\"player1Id\":\"" + userId + "\",\"player2Id\":\"\"" +
+                            ",\"player1Score\":0,\"player2Score\":0,\"winner\":\"\"" +
                             ",\"ballX\":" + (GAME_WIDTH/2) + ",\"ballY\":" + (GAME_HEIGHT/2) +
                             ",\"ballDX\":8,\"ballDY\":0" +
                             ",\"p1PaddleY\":" + ((GAME_HEIGHT-PADDLE_HEIGHT)/2) +
                             ",\"p2PaddleY\":" + ((GAME_HEIGHT-PADDLE_HEIGHT)/2) +
                             ",\"status\":\"waiting\"}";
-                        var createReq = HttpRequest.newBuilder()
+                        var req = HttpRequest.newBuilder()
                             .uri(URI.create(BASE_URL + "/api/collections/games/records"))
                             .header("Content-Type", "application/json").header("Authorization", token)
                             .POST(HttpRequest.BodyPublishers.ofString(payload)).build();
-                        var createRes = HTTP.send(createReq, HttpResponse.BodyHandlers.ofString()).body();
-                        gameId = JsonUtil.get(createRes, "id");
-                        isHost = true;
+                        var res = HTTP.send(req, HttpResponse.BodyHandlers.ofString()).body();
+                        gameId = JsonUtil.get(res, "id");
+                        isHost = true; isCustomRoom = true;
+                        final String displayId = genId;
+                        active = true; waitingForPlayer2 = true;
+                        SwingUtilities.invokeLater(() -> {
+                            loading = false;
+                            game.mpCurrentRoomId = displayId;
+                            game.state = State.MP_WAITING;
+                        });
+                        SCHEDULER.scheduleAtFixedRate(this::pollServer, 0, 100, TimeUnit.MILLISECONDS);
+                        return;
+                    }
+
+                    // ── Check if this is a persistent ranked room (join by roomId name) ──
+                    boolean isPersistent = false;
+                    for (String[] pr : PongGame.PERSISTENT_ROOMS) if (pr[0].equals(roomRef)) { isPersistent = true; break; }
+
+                    if (isPersistent) {
+                        // Fetch by roomId name
+                        var req = HttpRequest.newBuilder()
+                            .uri(URI.create(BASE_URL + "/api/collections/games/records?filter=(roomId%3D'" + roomRef + "')&perPage=1"))
+                            .header("Authorization", token).build();
+                        var res = HTTP.send(req, HttpResponse.BodyHandlers.ofString()).body();
+                        System.out.println("[join] " + res.substring(0, Math.min(400, res.length())));
+                        String arrKey = "\"items\":[";
+                        int ai = res.indexOf(arrKey);
+                        String item = (ai >= 0) ? firstArrayItem(res.substring(ai + arrKey.length())) : null;
+                        if (item == null) { error("Room not found"); return; }
+                        String existingId = JsonUtil.get(item, "id");
+                        String p1 = JsonUtil.get(item, "player1Id");
+                        String p2 = JsonUtil.get(item, "player2Id");
+                        boolean p1Empty = (p1 == null || p1.length() < 10 || "null".equals(p1));
+                        boolean p2Empty = (p2 == null || p2.length() < 10 || "null".equals(p2));
+                        if (p1Empty) {
+                            // Claim host slot
+                            patch(existingId, "{\"player1Id\":\"" + userId + "\",\"player2Id\":\"\",\"status\":\"waiting\",\"player1Score\":0,\"player2Score\":0,\"winner\":\"\"}");
+                            gameId = existingId; isHost = true; isCustomRoom = false;
+                        } else if (!p1.equals(userId) && p2Empty) {
+                            // Claim client slot (not our own room)
+                            patch(existingId, "{\"player2Id\":\"" + userId + "\",\"status\":\"playing\"}");
+                            gameId = existingId; isHost = false; isCustomRoom = false;
+                        } else if (p1.equals(userId)) {
+                            softError("You are already in this room"); return;
+                        } else {
+                            timedError("Room is full — try another"); return;
+                        }
+                    } else {
+                        // ── Join a custom room by DB record id ────────────────
+                        var req = HttpRequest.newBuilder()
+                            .uri(URI.create(BASE_URL + "/api/collections/games/records/" + roomRef))
+                            .header("Authorization", token).build();
+                        var res = HTTP.send(req, HttpResponse.BodyHandlers.ofString()).body();
+                        System.out.println("[join] " + res.substring(0, Math.min(400, res.length())));
+                        String p1 = JsonUtil.get(res, "player1Id");
+                        String p2 = JsonUtil.get(res, "player2Id");
+                        boolean p2Empty = (p2 == null || p2.length() < 10 || "null".equals(p2));
+                        if (p1 != null && p1.equals(userId)) { softError("You created this room — wait for an opponent"); return; }
+                        if (!p2Empty) { timedError("Room is full — try another"); return; }
+                        patch(roomRef, "{\"player2Id\":\"" + userId + "\",\"status\":\"playing\"}");
+                        gameId = roomRef; isHost = false; isCustomRoom = false;
                     }
 
                     active = true;
                     waitingForPlayer2 = isHost;
+                    final String dispId = isPersistent ? roomRef : gameId.substring(0, Math.min(6, gameId.length())).toUpperCase();
                     SwingUtilities.invokeLater(() -> {
                         loading = false;
-                        if (isHost) {
-                            game.state = State.MP_WAITING;
-                        } else {
-                            game.resetGame();
-                        }
+                        game.mpCurrentRoomId = dispId;
+                        if (isHost) game.state = State.MP_WAITING;
+                        else game.resetGame();
                     });
-
                     SCHEDULER.scheduleAtFixedRate(this::pollServer, 0, 100, TimeUnit.MILLISECONDS);
 
                 } catch (Exception e) {
                     e.printStackTrace();
-                    final String msg = e.getMessage() != null ? e.getMessage() : "Network error";
-                    SwingUtilities.invokeLater(() -> {
-                        loading = false;
-                        game.mpLoginError = "Room error: " + msg;
-                    });
+                    error(e.getMessage() != null ? e.getMessage() : "Network error");
                 }
             }).start();
+        }
+
+        private void patch(String id, String body) throws Exception {
+            var req = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/api/collections/games/records/" + id))
+                .header("Content-Type", "application/json").header("Authorization", token)
+                .method("PATCH", HttpRequest.BodyPublishers.ofString(body)).build();
+            HTTP.send(req, HttpResponse.BodyHandlers.ofString());
+        }
+        private void error(String msg) {
+            final String m = msg; SwingUtilities.invokeLater(() -> { loading = false; game.mpLoginError = m; });
+        }
+        private void softError(String msg) {
+            final String m = msg; SwingUtilities.invokeLater(() -> { loading = false; game.mpLoginError = m;
+                new javax.swing.Timer(3000, ev -> { game.mpLoginError = ""; ((javax.swing.Timer)ev.getSource()).stop(); }).start(); });
+        }
+        private void timedError(String msg) {
+            final String m = msg; SwingUtilities.invokeLater(() -> { loading = false; game.mpLoginError = m;
+                new javax.swing.Timer(2000, ev -> { game.mpLoginError = ""; ((javax.swing.Timer)ev.getSource()).stop(); }).start(); });
         }
 
         private void pollServer() {
@@ -3195,7 +3216,7 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
                 var res = HTTP.send(req, HttpResponse.BodyHandlers.ofString()).body();
                 String status = JsonUtil.get(res, "status");
 
-                // Host waiting: check if player2 has joined and status is playing
+                // Host waiting: check if player2 joined AND status is playing
                 if (waitingForPlayer2 && isHost) {
                     String p2id = JsonUtil.get(res, "player2Id");
                     boolean p2joined = p2id != null && p2id.length() >= 10 && !"null".equals(p2id);
@@ -3240,25 +3261,20 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
                     // Either player: game ended (normal finish or forfeit)
                     String s1s = JsonUtil.get(res, "player1Score");
                     String s2s = JsonUtil.get(res, "player2Score");
-                    String winner = JsonUtil.get(res, "winner");
                     final int s1 = s1s != null ? Integer.parseInt(s1s) : game.score.p1;
                     final int s2 = s2s != null ? Integer.parseInt(s2s) : game.score.p2;
-                    // Only act if we didn't write this ourselves (client always, host only on forfeit)
-                    boolean clientShouldAct = !isHost;
-                    boolean hostShouldAct = isHost && "forfeit".equals(winner);
-                    if (clientShouldAct || hostShouldAct) {
-                        SwingUtilities.invokeLater(() -> {
-                            game.score.p1 = s1;
-                            game.score.p2 = s2;
-                            if (game.state == State.PLAYING || game.state == State.COUNTDOWN || game.state == State.PAUSED) {
-                                game.state = State.GAMEOVER;
-                                if (game.soundEnabled) {
-                                    boolean iWon = isHost ? s1 >= WIN_SCORE : s2 >= WIN_SCORE;
-                                    game.soundManager.playGameOver(iWon);
-                                }
+                    // Both players act — the one who triggered finished already left or is in gameover
+                    SwingUtilities.invokeLater(() -> {
+                        game.score.p1 = s1;
+                        game.score.p2 = s2;
+                        if (game.state == State.PLAYING || game.state == State.COUNTDOWN || game.state == State.PAUSED) {
+                            game.state = State.GAMEOVER;
+                            if (game.soundEnabled) {
+                                boolean iWon = isHost ? s1 >= WIN_SCORE : s2 >= WIN_SCORE;
+                                game.soundManager.playGameOver(iWon);
                             }
-                        });
-                    }
+                        }
+                    });
                 }
             } catch (Exception e) { System.err.println("pollServer: " + e.getMessage()); }
         }
@@ -3318,16 +3334,8 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
         public void endGame(boolean won) {
             if (!active || gameId.isEmpty() || !isHost) return;
             try {
-                // Clear both player slots so the persistent room is ready for the next game
-                var payload = "{\"status\":\"finished\",\"winner\":\"" + (won ? userId : "opponent") + "\"" +
-                    ",\"player1Id\":\"\",\"player2Id\":\"\"}";
-                var req = HttpRequest.newBuilder()
-                    .uri(URI.create(BASE_URL + "/api/collections/games/records/" + gameId))
-                    .header("Content-Type", "application/json")
-                    .header("Authorization", token)
-                    .method("PATCH", HttpRequest.BodyPublishers.ofString(payload))
-                    .build();
-                HTTP.send(req, HttpResponse.BodyHandlers.ofString());
+                patch(gameId, "{\"status\":\"finished\",\"winner\":\"" + (won ? userId : "opponent") + "\"" +
+                    ",\"player1Id\":\"\",\"player2Id\":\"\"}");
             } catch (Exception e) {}
         }
 
@@ -3336,23 +3344,11 @@ public class PongGame extends JPanel implements ActionListener, KeyListener {
         public void forfeitGame() {
             if (!active || gameId.isEmpty()) return;
             try {
-                String p1Score, p2Score;
-                if (isHost) {
-                    p1Score = "0"; p2Score = String.valueOf(WIN_SCORE);
-                } else {
-                    p1Score = String.valueOf(WIN_SCORE); p2Score = "0";
-                }
-                // Clear both player slots so the persistent room is immediately reusable
-                var payload = "{\"status\":\"finished\",\"player1Score\":" + p1Score
+                String p1Score = isHost ? "0" : String.valueOf(WIN_SCORE);
+                String p2Score = isHost ? String.valueOf(WIN_SCORE) : "0";
+                patch(gameId, "{\"status\":\"finished\",\"player1Score\":" + p1Score
                     + ",\"player2Score\":" + p2Score + ",\"winner\":\"forfeit\""
-                    + ",\"player1Id\":\"\",\"player2Id\":\"\"}";
-                var req = HttpRequest.newBuilder()
-                    .uri(URI.create(BASE_URL + "/api/collections/games/records/" + gameId))
-                    .header("Content-Type", "application/json")
-                    .header("Authorization", token)
-                    .method("PATCH", HttpRequest.BodyPublishers.ofString(payload))
-                    .build();
-                HTTP.send(req, HttpResponse.BodyHandlers.ofString());
+                    + ",\"player1Id\":\"\",\"player2Id\":\"\"}");
             } catch (Exception e) { System.err.println("forfeit error: " + e); }
         }
     }
