@@ -25,7 +25,7 @@ Neon Pong is a visually-stylized, multiplayer-enabled Pong game with a cyberpunk
 
 ### Prerequisites
 - **Java 11 or higher** (required for `java.net.http.HttpClient`)
-- Tested on macOS, Windows, and Linux
+- Tested on macOS, to be tested on Windows and Linux
 
 ### Running the game
 
