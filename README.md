@@ -45,6 +45,9 @@ javac beta-test/multiplayer/PongGame.java
 java -cp beta-test/multiplayer PongGame
 ```
 
+### Download pre-built JAR
+Visit [neonpong.deewhy.ovh](https://neonpong.deewhy.ovh) for the latest release.
+
 ## 🌐 Multiplayer Setup
 
 The game uses a PocketBase backend, to use your own backend:
@@ -160,6 +163,7 @@ pong-neon/
 │   └── multiplayer/
 │       └── PongGame.java          # Main game source (all-in-one file)
 ├── docs/                           # Documentation & landing page
+│   ├── index.html                  # Landing page
 │   └── screenshot.png              # Game screenshot
 ├── dist/                           # Compiled JARs (future)
 ├── src/                            # Future source split
@@ -223,7 +227,7 @@ Please report issues via GitHub Issues
 ---
 
 <div align="center">
-  <strong>🚀 Ready to play? Visit <a href="https://pong.deewhy.ovh/neonpong.html">pong.deewhy.ovh/neonpong.html</a> for downloads and updates!</strong>
+  <strong>🚀 Ready to play? Stay Tuned at <a href="https://github-deewhy.github.io/pong-neon/">NEON PONG Cyberpunk Arcade Edition</a> for downloads and updates!</strong>
   <br><br>
   <sub>Built with ☕ and ⚡ in Italy · © 2026 DeeWHY</sub>
 </div>
